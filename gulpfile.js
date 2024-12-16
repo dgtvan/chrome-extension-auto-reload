@@ -1,6 +1,10 @@
-/*
- * Gulp tasks (execute by running 'gulp [taskname]' on the command line
- *
+const gulp = require('gulp');
+const browserify = require('gulp-browserify');
+const fs = require('fs');
+const template = require('gulp-template');
+const zip = require('gulp-zip');
+const marked = require('gulp-marked'); // Replace gulp-markdown with gulp-marked
+const del = require('del'); // Compatible CommonJS version of del
  * Task Name    Description
  * ---------------------------------------------------------------------
  * default      Create full build and distribution zip file
@@ -11,59 +15,117 @@
  * watch        Create a full build and automatically rebuild code files when changes are detected
  */
 
-var browserify = require('gulp-browserify');
-var fs = require("fs");
-var gulp = require('gulp');
-var rename = require('gulp-rename');
-var template = require('gulp-template');
-var zip = require('gulp-zip');
-var markdownify = require('markdownify');
-
+/**
+ * Helper function to get package details from package.json
+ */
 function getPackageDetails() {
-  return JSON.parse(fs.readFileSync("./package.json", "utf8"));
+  return JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 }
 
-gulp.task('default', ['build'], function() {
+/**
+ * Task: Clean build directory
+ */
+function clean() {
+  return del(['build']);
+}
 
-});
+/**
+ * Task: Copy images to build directory
+ */
+function copyImages() {
+  return gulp.src('./src/img/icons/*.*')
+    .pipe(gulp.dest('./build/img/icons'))
+    .on('end', () => console.log('Images copied from /src/ to /build/'));
+}
 
-gulp.task('build', ['build-code'], function() {
-  // copy images to build
-  gulp.src('./src/img/icons/*.*').pipe(gulp.dest('./build/img/icons'));
-  console.log('Images coppied from /src/ to /build/');
-});
-
-gulp.task('build-code', ['bundle-js'], function() {
-  gulp.src(['./src/manifest.json', './src/options.html'])
+/**
+ * Task: Process manifest and HTML files
+ */
+function processManifestAndHTML() {
+  return gulp.src(['./src/manifest.json', './src/options.html'])
     .pipe(template(getPackageDetails()))
-    .pipe(gulp.dest('./build'));
-  console.log('Chrome manifest file generated at /build/manifest.json');
-});
+    .pipe(gulp.dest('./build'))
+    .on('end', () => console.log('Chrome manifest file generated at /build/manifest.json'));
+}
 
-gulp.task('bundle-js', function() {
-  gulp.src(['./src/js/background.js', './src/js/options.js'], { read: false })
+/**
+ * Task: Bundle JavaScript files
+ */
+function bundleJS() {
+  return gulp.src(['./src/js/background.js', './src/js/options.js'], { read: false })
     .pipe(browserify({
-      debug: true,
-      transform: [markdownify]
+      debug: true
     }))
-    .pipe(gulp.dest('build/js'));
-  console.log('Source JavaScript files bundled to ./build/js/');
-});
+    .pipe(gulp.dest('./build/js'))
+    .on('end', () => console.log('Source JavaScript files bundled to ./build/js/'));
+}
 
-gulp.task('watch', ['build'], function() {
-  console.log('Watching for changes JavaScript or JSON files ...');
-  gulp.watch('./src/**/*.js', ['build-code']);
-  gulp.watch('./src/**/*.json', ['build-code']);
-  gulp.watch('./src/**/*.html', ['build-code']);
-  gulp.watch('./package.json', ['build-code']);
-});
+/**
+ * Task: Process Markdown files
+ */
+function processMarkdown() {
+  return gulp.src('./src/**/*.md') // Adjust path to match your markdown files
+    .pipe(marked())
+    .pipe(gulp.dest('./build/docs')) // Output markdown as HTML
+    .on('end', () => console.log('Markdown files processed and saved to ./build/docs'));
+}
 
-gulp.task('dist', ['build'], function() {
-  // compress chrome build into a distribution zip
-  gulp.src('build/**')
+/**
+ * Task: Watch for changes and rebuild
+ */
+function watchFiles() {
+  console.log('Watching for changes in JavaScript, JSON, or HTML files...');
+  gulp.watch('./src/**/*.js', gulp.series(buildCode));
+  gulp.watch('./src/**/*.json', gulp.series(buildCode));
+  gulp.watch('./src/**/*.html', gulp.series(buildCode));
+  gulp.watch('./src/**/*.md', gulp.series(processMarkdown)); // Watch for markdown changes
+  gulp.watch('./package.json', gulp.series(buildCode));
+}
+
+/**
+ * Task: Package build directory into a zip file
+ */
+function createDist() {
+  return gulp.src('build/**')
     .pipe(zip('chrome-extension.zip'))
-    .pipe(gulp.dest('dist'));
+    .pipe(gulp.dest('./dist'))
+    .on('end', () => console.log('./build/ folder successfully packaged as ./dist/chrome-extension.zip'));
+}
 
-  console.log('./build/ folder successfully packaged as ./dist/chrome-extension.zip');
+/**
+ * Task: Build code (JS + manifest/HTML)
+ */
+const buildCode = gulp.series(bundleJS, processManifestAndHTML);
 
-});
+/**
+ * Task: Full build (clean, build-code, copy images, process markdown)
+ */
+const build = gulp.series(clean, buildCode, copyImages, processMarkdown);
+
+/**
+ * Task: Watch for changes
+ */
+const watch = gulp.series(build, watchFiles);
+
+/**
+ * Task: Create a distribution zip
+ */
+const dist = gulp.series(build, createDist);
+
+/**
+ * Default task: Full build
+ */
+const defaultTask = build;
+
+/**
+ * Export tasks
+ */
+exports.clean = clean;
+exports.copyImages = copyImages;
+exports.bundleJS = bundleJS;
+exports.processMarkdown = processMarkdown;
+exports.buildCode = buildCode;
+exports.build = build;
+exports.watch = watch;
+exports.dist = dist;
+exports.default = defaultTask;
