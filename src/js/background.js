@@ -5,7 +5,7 @@
   const SOCKET_IO_PORT = '8890';
 
   // See https://github.com/robin-drexler/chrome-extension-auto-reload/pull/2#issuecomment-154829693
-  var reloadMethod = "page"; // can be "api" or "page"
+  var reloadMethod = "api"; // can be "api" or "page"
 
   function applyReloadMethod() {
     chrome.storage.sync.get({
