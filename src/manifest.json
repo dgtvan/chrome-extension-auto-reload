@@ -11,8 +11,15 @@
     "management"
   ],
   "background": {
-    "scripts": ["js/background.js"]
+    "service_worker": "js/background.js"
   },
-  "options_page": "options.html",
-  "manifest_version": 2
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "manifest_version": 3
 }

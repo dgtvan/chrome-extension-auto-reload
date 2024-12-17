@@ -1,4 +1,4 @@
-(function (console) {
+(function () {
   "use strict";
 
   const CHROME_EXTENSION_URL = 'chrome://extensions/';
@@ -24,7 +24,9 @@
   });
 
   var io = require('socket.io-client');
-  var socket = io('http://localhost:' + SOCKET_IO_PORT);
+  var socket = io('http://localhost:' + SOCKET_IO_PORT, {
+    transports: ['websocket']
+  });
 
   function reloadTab(tab) {
     console.log('reloading tab', tab);
@@ -97,4 +99,15 @@
     }
   });
 
-})(window.console);
+  socket.on('connect', () => {
+    console.log('Connected to server:', socket.id);
+  });
+  
+  socket.on('disconnect', (reason) => {
+    console.log('Disconnected:', reason);
+  });
+  socket.on('connect_error', (error) => {
+    console.error('Connection Error:', error.message);
+  });
+
+})();

@@ -1,10 +1,16 @@
 const gulp = require('gulp');
-const browserify = require('gulp-browserify');
 const fs = require('fs');
 const template = require('gulp-template');
 const zip = require('gulp-zip');
 const marked = require('gulp-marked'); // Replace gulp-markdown with gulp-marked
 const del = require('del'); // Compatible CommonJS version of del
+const browserify = require('browserify'); // Use browserify directly
+const source = require('vinyl-source-stream'); // Converts Browserify output to Vinyl stream
+const buffer = require('vinyl-buffer'); // Converts stream to buffer for further Gulp processing
+const babelify = require('babelify'); // Babel transform
+const log = require('fancy-log'); // Logging utility
+
+/*
  * Task Name    Description
  * ---------------------------------------------------------------------
  * default      Create full build and distribution zip file
@@ -52,12 +58,23 @@ function processManifestAndHTML() {
  * Task: Bundle JavaScript files
  */
 function bundleJS() {
-  return gulp.src(['./src/js/background.js', './src/js/options.js'], { read: false })
-    .pipe(browserify({
-      debug: true
-    }))
-    .pipe(gulp.dest('./build/js'))
-    .on('end', () => console.log('Source JavaScript files bundled to ./build/js/'));
+  return browserify({
+    entries: ['./src/js/background.js'], // Entry point
+    debug: true, // Enable source maps
+  })
+    .transform(babelify, { // Apply Babelify here
+      presets: ['@babel/preset-env'], // Transpile modern JS
+      global: true, // Ensures Babelify processes files in node_modules
+    })
+    .bundle() // Perform bundling
+    .on('error', function (err) {
+      log.error('Browserify Error:', err.message);
+      this.emit('end'); // Prevent crashing Gulp
+    })
+    .pipe(source('background.js')) // Output filename
+    .pipe(buffer()) // Convert stream to buffer
+    .pipe(gulp.dest('./build/js')) // Output directory
+    .on('end', () => log('Bundled JavaScript to ./build/js/'));
 }
 
 /**
