@@ -5,6 +5,8 @@ const template = require('gulp-template');
 const zip = require('gulp-zip');
 const marked = require('gulp-marked'); // Replace gulp-markdown with gulp-marked
 const del = require('del'); // Compatible CommonJS version of del
+
+/*
  * Task Name    Description
  * ---------------------------------------------------------------------
  * default      Create full build and distribution zip file
